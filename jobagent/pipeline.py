@@ -121,6 +121,7 @@ class JobAgent:
         scored_count = 0
         skipped_low = 0
         skipped_rules = 0
+        updates: list[dict] = []
         for row in pending:
             job = {
                 "id": row.get("Job ID"),
@@ -134,8 +135,14 @@ class JobAgent:
             decision = evaluate_rules(job, rules)
             if not decision["ok"]:
                 reason = f"RULE: {decision['reason']}"
-                sheet.update_score(job["id"], 0, reason)
-                sheet.update_status(job["id"], "SKIPPED")
+                updates.append(
+                    {
+                        "job_id": job["id"],
+                        "score": 0,
+                        "reasons": reason,
+                        "status": "SKIPPED",
+                    }
+                )
                 skipped_rules += 1
                 print(f"[score] {job['id']} {reason} -> SKIPPED")
                 continue
@@ -148,14 +155,17 @@ class JobAgent:
                 print(f"[score] failed for {job['id']}: {exc}")
                 continue
             score, reasons = result["score"], result["reasons"]
-            sheet.update_score(job["id"], score, reasons)
+            status = "TARGET" if score >= self.config.score_threshold else "SKIPPED"
+            updates.append(
+                {"job_id": job["id"], "score": score, "reasons": reasons, "status": status}
+            )
             scored_count += 1
-            if score < self.config.score_threshold:
+            if status == "SKIPPED":
                 skipped_low += 1
-                sheet.update_status(job["id"], "SKIPPED")
                 print(f"[score] {job['id']} score={score} -> SKIPPED")
             else:
                 print(f"[score] {job['id']} score={score} -> TARGET")
+        sheet.finalize_rows(updates)
         print(
             f"[score] scored {scored_count} jobs, {skipped_low} below threshold, "
             f"{skipped_rules} blocked by rules"
@@ -187,6 +197,7 @@ class JobAgent:
         ]
         print(f"[tailor] {len(targets)} jobs to tailor for")
         made = 0
+        updates: list[dict] = []
         for row in targets:
             job = {
                 "id": row.get("Job ID"),
@@ -208,15 +219,20 @@ class JobAgent:
             except LLMError as exc:
                 print(f"[tailor] failed for {job['id']}: {exc}")
                 continue
-            sheet.update_status(job["id"], "APPLY_READY", package)
+            updates.append(
+                {"job_id": job["id"], "status": "APPLY_READY", "package": package}
+            )
             made += 1
             print(f"[tailor] {job['id']} -> {package}")
+        sheet.finalize_rows(updates)
         return made
 
     def enforce_rules(self) -> tuple[int, int]:
-        """Re-check every already-scored row against the current rules and
-        skip any that now fail (e.g. after tightening the location filter).
-        Returns (blocked, still_ok)."""
+        """Re-check every already-scored row against the current rules.
+
+        Rows that now FAIL are skipped. Rows that were previously blocked by
+        a rule ("RULE:" reason) but now PASS are reset to unscored so the next
+        `score` run picks them up. Returns (blocked, still_ok)."""
         self.config.require_sheets()
         sheet = JobSheet(
             self.config.google_service_account_file,
@@ -227,10 +243,14 @@ class JobAgent:
         rows = sheet.worksheet().get_all_records()
         blocked = 0
         ok = 0
+        restored = 0
+        updates: list[dict] = []
         for row in rows:
             if _as_float(row.get("Score")) is None:
                 continue
-            if str(row.get("Status", "")).strip() == "SKIPPED":
+            reasons_old = str(row.get("Match Reasons", "") or "")
+            was_rule_blocked = reasons_old.startswith("RULE:")
+            if not was_rule_blocked and str(row.get("Status", "")).strip() == "SKIPPED":
                 continue
             job = {
                 "id": row.get("Job ID"),
@@ -243,13 +263,34 @@ class JobAgent:
             }
             decision = evaluate_rules(job, rules)
             if not decision["ok"]:
-                sheet.update_score(job["id"], 0, f"RULE: {decision['reason']}")
-                sheet.update_status(job["id"], "SKIPPED")
+                updates.append(
+                    {
+                        "job_id": job["id"],
+                        "score": 0,
+                        "reasons": f"RULE: {decision['reason']}",
+                        "status": "SKIPPED",
+                    }
+                )
                 blocked += 1
                 print(f"[rules] {job['id']} {decision['reason']} -> SKIPPED")
+            elif was_rule_blocked:
+                updates.append(
+                    {
+                        "job_id": job["id"],
+                        "score": "",
+                        "reasons": "",
+                        "status": "NEW",
+                    }
+                )
+                restored += 1
+                print(f"[rules] {job['id']} now passes rules -> reset to NEW for re-scoring")
             else:
                 ok += 1
-        print(f"[rules] {blocked} jobs now blocked, {ok} still passing")
+        sheet.finalize_rows(updates)
+        print(
+            f"[rules] {blocked} jobs now blocked, {restored} restored for re-scoring, "
+            f"{ok} still passing"
+        )
         return blocked, ok
 
     def run(

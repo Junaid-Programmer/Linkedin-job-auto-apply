@@ -135,6 +135,47 @@ class JobSheet:
             if package_path:
                 worksheet.update_cell(row, PACKAGE_COL, package_path)
 
+    def finalize_rows(self, updates: list[dict]) -> int:
+        """Apply score / reasons / status / package updates in ONE read and
+        ONE write (avoids the Sheets per-minute read quota).
+
+        Each update dict may contain: job_id (required), score, reasons,
+        status, package.
+        """
+        if not updates:
+            return 0
+        worksheet = self.worksheet()
+        ids = worksheet.col_values(2)
+        row_of: dict[str, int] = {}
+        for idx, value in enumerate(ids, start=1):
+            value = str(value).strip()
+            if value and value != "Job ID":
+                row_of[value] = idx
+
+        SCORE_COL = 9
+        REASONS_COL = 10
+        STATUS_COL = 11
+        PACKAGE_COL = 12
+        _LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        cells = []
+        for u in updates:
+            row = row_of.get(str(u["job_id"]))
+            if row is None:
+                continue
+            if "score" in u and u.get("score") is not None:
+                cells.append({"range": f"{_LETTERS[SCORE_COL-1]}{row}", "values": [[u["score"]]]})
+            if "reasons" in u:
+                cells.append(
+                    {"range": f"{_LETTERS[REASONS_COL-1]}{row}", "values": [[str(u["reasons"])[:500]]]}
+                )
+            if "status" in u:
+                cells.append({"range": f"{_LETTERS[STATUS_COL-1]}{row}", "values": [[u["status"]]]})
+            if u.get("package"):
+                cells.append({"range": f"{_LETTERS[PACKAGE_COL-1]}{row}", "values": [[u["package"]]]})
+        if cells:
+            worksheet.batch_update(cells, value_input_option="USER_ENTERED")
+        return len(cells)
+
     def _find_row(self, job_id: str) -> Optional[int]:
         worksheet = self.worksheet()
         values = worksheet.col_values(2)

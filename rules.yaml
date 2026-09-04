@@ -21,8 +21,8 @@
 linkedin_location: Europe
 
 # A job is kept only if its location (shown on LinkedIn) is in one of
-# these countries. Put any European country here you accept. Empty list
-# = no region filter. Add UK/Switzerland/Norway/Iceland if you want them.
+# these countries. This list = EU-27 + Iceland, Norway, Switzerland,
+# United Kingdom. Empty list = no region filter.
 allow_countries:
   - Austria
   - Belgium
@@ -37,6 +37,7 @@ allow_countries:
   - Germany
   - Greece
   - Hungary
+  - Iceland
   - Ireland
   - Italy
   - Latvia
@@ -44,6 +45,7 @@ allow_countries:
   - Luxembourg
   - Malta
   - Netherlands
+  - Norway
   - Poland
   - Portugal
   - Romania
@@ -51,6 +53,8 @@ allow_countries:
   - Slovenia
   - Spain
   - Sweden
+  - Switzerland
+  - United Kingdom
 
 # Remote postings often show only "Remote" without a country. If you are
 # open to remote jobs posted by EU employers, keep this true. Set false
