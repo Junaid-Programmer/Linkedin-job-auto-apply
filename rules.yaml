@@ -1,0 +1,119 @@
+# =====================================================================
+# JOB AGENT RULES
+# ---------------------------------------------------------------------
+# Edit this file to control which jobs the agent keeps. Rules here are
+# HARD FILTERS: a job that fails any rule is marked SKIPPED in the sheet
+# and never scored or tailored.
+#
+# How to edit:
+#   - keep the two-space indentation under each heading
+#   - lists start with "- "
+#   - text is case-insensitive
+#   - anything after a # on a line is a comment (ignored)
+#   - empty list = rule is off
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# 1) WHERE THE JOB MUST BE (region gate)
+# ---------------------------------------------------------------------
+# `linkedin_location` is the place sent to LinkedIn's search box. It can
+# be a country, city, region ("Europe"), or a country you name.
+linkedin_location: Europe
+
+# A job is kept only if its location (shown on LinkedIn) is in one of
+# these countries. Put any European country here you accept. Empty list
+# = no region filter. Add UK/Switzerland/Norway/Iceland if you want them.
+allow_countries:
+  - Austria
+  - Belgium
+  - Bulgaria
+  - Croatia
+  - Cyprus
+  - Czechia
+  - Denmark
+  - Estonia
+  - Finland
+  - France
+  - Germany
+  - Greece
+  - Hungary
+  - Ireland
+  - Italy
+  - Latvia
+  - Lithuania
+  - Luxembourg
+  - Malta
+  - Netherlands
+  - Poland
+  - Portugal
+  - Romania
+  - Slovakia
+  - Slovenia
+  - Spain
+  - Sweden
+
+# Remote postings often show only "Remote" without a country. If you are
+# open to remote jobs posted by EU employers, keep this true. Set false
+# to reject any posting whose location is just "Remote".
+allow_remote_unknown: true
+
+# ---------------------------------------------------------------------
+# 2) COMPANIES (blocklist)
+# ---------------------------------------------------------------------
+# Job is rejected if its company name contains any of these (partial,
+# case-insensitive match). Example:
+#   excluded_companies:
+#     - ABC Consulting
+#     - spam-staffing
+excluded_companies: []
+
+# ---------------------------------------------------------------------
+# 3) KEYWORDS IN THE POSTING (required / forbidden)
+# ---------------------------------------------------------------------
+# `required_keywords`: the job MUST contain ALL of these somewhere in the
+# title or description. Example to require entry/junior-friendly roles:
+#   required_keywords:
+#     - entry level
+#     - junior
+required_keywords: []
+
+# `excluded_keywords`: the job is REJECTED if the title or description
+# contains ANY of these.
+excluded_keywords:
+  - commission-based
+  - commission based
+  - door to door
+  - night shift
+  - telemarketing
+  - 1099
+  - unpaid
+  - internship
+
+# ---------------------------------------------------------------------
+# 4) WORK STYLE (remote / hybrid / on-site)
+# ---------------------------------------------------------------------
+# any | remote only | on-site only | hybrid only
+work_style: any
+
+# ---------------------------------------------------------------------
+# 5) EMPLOYMENT TYPE & LEVEL (optional, checked in the description)
+# ---------------------------------------------------------------------
+# If you only want full-time, permanent jobs:
+#   employment_keywords:
+#     - full-time
+#     - permanent
+employment_keywords: []
+
+# Seniority keywords. Leave empty for any level. Example for entry/junior:
+#   level_keywords:
+#     - entry level
+#     - junior
+#     - fresher
+level_keywords: []
+
+# ---------------------------------------------------------------------
+# 6) EXTRA WORDS THAT RAISE A MATCH SCORE (optional)
+# ---------------------------------------------------------------------
+# The offline scorer gives extra credit when these appear. Useful for
+# skills or tools you love that your profile may not spell out.
+preferred_keywords: []

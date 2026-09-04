@@ -1,0 +1,25 @@
+# Candidate profile
+#
+# The scoring LLM uses this to judge job fit. Be specific: current role,
+# years of experience, skills with levels, industries, salary expectations,
+# location/remote preferences, and deal-breakers.
+
+## Who I am
+- Current role: Senior Python Developer
+- Years of experience: 6
+
+## Skills (with proficiency)
+- Python (expert), FastAPI/Django (expert), PostgreSQL (advanced)
+- Docker/Kubernetes (advanced), AWS (intermediate)
+- React/TypeScript (intermediate), data pipelines / ETL (advanced)
+
+## Preferences
+- Remote or hybrid within GMT+2, on-site only for exceptional roles
+- Backend, platform, or data engineering focus
+- Industries: fintech, SaaS, developer tools
+- Salary: above-market, equity preferred
+
+## Deal-breakers
+- No legacy PHP/Cobol maintenance
+- No on-call rotations more than 1 week per 2 months
+- No roles below senior level

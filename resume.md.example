@@ -1,0 +1,26 @@
+# Jane Developer
+Email: jane@example.com | Phone: +1 555-000-1234 | LinkedIn: /in/janedev | Location: Remote (GMT+2)
+
+## Summary
+Senior Python developer with 6 years building backend services, data pipelines,
+and developer tools. Expert in FastAPI and Django, PostgreSQL, and containerized
+deployments on AWS.
+
+## Experience
+
+### Senior Python Developer — FintechCorp, 2021–Present
+- Led migration of a monolith into 12 FastAPI microservices
+- Cut p95 API latency by 60% by introducing caching and async DB access
+- Designed ETL pipeline processing 2M events/day into a data warehouse
+
+### Python Developer — SaaSify, 2018–2021
+- Built Django-based billing and subscription platform
+- Automated CI/CD with GitHub Actions and Docker; cut release time 5x
+- Wrote integration test suite now running 400+ checks per merge
+
+## Skills
+Python, FastAPI, Django, PostgreSQL, Redis, Docker, Kubernetes, AWS (EC2, RDS, S3),
+ETL, Airflow, React, TypeScript
+
+## Education
+BSc Computer Science — University of Example, 2018
