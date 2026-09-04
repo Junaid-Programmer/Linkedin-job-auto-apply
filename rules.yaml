@@ -68,7 +68,7 @@ allow_remote_unknown: true
 excluded_companies: []
 
 # ---------------------------------------------------------------------
-# 3) KEYWORDS IN THE POSTING (required / forbidden)
+# 3) KEYWORDS IN THE POSTING (required/forbidden)
 # ---------------------------------------------------------------------
 # `required_keywords`: the job MUST contain ALL of these somewhere in the
 # title or description. Example to require entry/junior-friendly roles:
@@ -93,7 +93,7 @@ excluded_keywords:
 # 4) WORK STYLE (remote / hybrid / on-site)
 # ---------------------------------------------------------------------
 # any | remote only | on-site only | hybrid only
-work_style: any
+work_style: remote
 
 # ---------------------------------------------------------------------
 # 5) EMPLOYMENT TYPE & LEVEL (optional, checked in the description)
