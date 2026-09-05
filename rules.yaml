@@ -130,3 +130,12 @@ preferred_keywords: []
 # Example: max_applicants: 50  skips jobs that already have 50+ applicants.
 min_applicants: 0
 max_applicants: 0
+
+# ---------------------------------------------------------------------
+# 8) HOW RECENTLY THE JOB WAS POSTED
+# ---------------------------------------------------------------------
+# Keep jobs posted within this window. Also used as the LinkedIn search
+# time filter. LinkedIn only has 24h / week / month / any in search, so
+# 2h, 5h, 7h, and 2day are tightened locally from the Posted text.
+# Values: 2h | 5h | 7h | 24h | 2day | 7day | all
+posted_within: 24h

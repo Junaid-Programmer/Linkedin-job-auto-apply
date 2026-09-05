@@ -26,7 +26,8 @@ from playwright.sync_api import (
 LINKEDIN_BASE = "https://www.linkedin.com"
 JOB_ID_RE = re.compile(r"/jobs/view/(\d+)")
 POSTED_RE = re.compile(
-    r"^(just now|today|yesterday|a (day|week|month) ago|(\d+) (minute|hour|day|week|month)s? ago)$",
+    r"^(reposted\s+)?(just now|today|yesterday|a (minute|hour|day|week|month) ago|"
+    r"(\d+)\s*(m|h|d|w)|(an? )?(\d+)?\s*(minute|hour|day|week|month)s? ago)$",
     re.IGNORECASE,
 )
 

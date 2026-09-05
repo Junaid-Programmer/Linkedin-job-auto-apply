@@ -54,7 +54,7 @@ class Config:
     search_keywords: str = "python developer"
     search_location: str = "Remote"
     search_pages: int = 2
-    search_time_filter: str = "r604800"
+    search_time_filter: str = "24h"
     state_file: str = "data/linkedin_state.json"
 
     extra: dict = field(default_factory=dict)
@@ -81,7 +81,7 @@ class Config:
             search_keywords=_get("LINKEDIN_SEARCH_KEYWORDS", "python developer"),
             search_location=_get("LINKEDIN_SEARCH_LOCATION", "Remote"),
             search_pages=pages,
-            search_time_filter=_get("LINKEDIN_TIME_FILTER", "r604800"),
+            search_time_filter=_get("LINKEDIN_TIME_FILTER", "24h"),
             state_file=_get("LINKEDIN_STATE_FILE", "data/linkedin_state.json"),
             extra={
                 "profile_file": "profile.md",

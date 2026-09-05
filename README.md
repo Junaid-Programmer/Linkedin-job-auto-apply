@@ -88,7 +88,7 @@ the login here directly and paste your credentials when prompted with
 python run.py run
 
 # With custom search
-python run.py run --keywords "senior python developer" --location "Berlin" --pages 3
+python run.py run --keywords "senior python developer" --location "Berlin" --pages 3 --posted 24h
 
 # Individual steps
 python run.py scrape --keywords "fastapi" --pages 2   # scrape only
@@ -111,6 +111,9 @@ linkedin_location: Europe
 # Skip jobs that already have too many (or too few) applicants. 0 = unused.
 min_applicants: 0
 max_applicants: 50
+
+# Keep jobs posted within this window: 2h | 5h | 7h | 24h | 2day | 7day | all
+posted_within: 24h
 
 # Job must be physically in one of these countries
 allow_countries:
@@ -152,8 +155,9 @@ Some notes:
    deduplicated by LinkedIn job ID.
 3. **Rules gate** (`jobagent/rules.py` + `rules.yaml`): every job is checked
    against your rules before scoring — country of the employer's location,
-   company blocklist, required/excluded keywords, work style, and optional
-   min/max applicant counts. Failures are marked `SKIPPED` with a reason.
+   company blocklist, required/excluded keywords, work style, optional
+   min/max applicant counts, and posted-time window (`2h`, `5h`, `7h`, `24h`,
+   `2day`, `7day`, `all`). Failures are marked `SKIPPED` with a reason.
 4. **Score** (`jobagent/scoring.py`): each remaining unscored row is sent to
    the LLM with your profile; it returns a 0–100 score and reasons.
    `>= SCORE_THRESHOLD` becomes a target, otherwise `SKIPPED`.
@@ -164,6 +168,11 @@ Some notes:
 ## Google Sheet columns
 
 `Timestamp | Job ID | Title | Company | Location | Posted | LinkedIn URL | Description | Applications Submitted | Score | Match Reasons | Status | Apply Package`
+
+The **Posted** column stores LinkedIn's posted text (e.g. `2 hours ago`).
+Override the window with `--posted 2h` / `5h` / `7h` / `24h` / `2day` / `7day` / `all`,
+or set `posted_within` in `rules.yaml`. LinkedIn search only has 24h / week / any,
+so 2h, 5h, 7h, and 2day are tightened locally from that Posted text.
 
 Status values: `NEW` → scored → `TARGET` / `SKIPPED` → `APPLY_READY` (with the
 path to the generated package).

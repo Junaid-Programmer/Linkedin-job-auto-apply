@@ -3,8 +3,8 @@
 
 Commands:
   python run.py login
-  python run.py run   [--keywords ...] [--location ...] [--pages N]
-  python run.py scrape [--keywords ...] [--location ...] [--pages N]
+  python run.py run   [--keywords ...] [--location ...] [--pages N] [--posted 24h]
+  python run.py scrape [--keywords ...] [--location ...] [--pages N] [--posted 24h]
   python run.py score
   python run.py enforce   (re-check scored rows against rules.yaml)
   python run.py tailor
@@ -83,6 +83,11 @@ def main() -> None:
         p.add_argument("--keywords", help="Search keywords")
         p.add_argument("--location", help="Search location")
         p.add_argument("--pages", type=int, help="Number of result pages")
+        p.add_argument(
+            "--posted",
+            dest="time_filter",
+            help="Posted window: 2h, 5h, 7h, 24h, 2day, 7day, or all",
+        )
     sub.add_parser("score", help="Score unscored jobs in the sheet")
     sub.add_parser(
         "enforce",
@@ -117,9 +122,19 @@ def main() -> None:
     agent = JobAgent(config)
     try:
         if args.command == "run":
-            agent.run(keywords=args.keywords, location=args.location, pages=args.pages)
+            agent.run(
+                keywords=args.keywords,
+                location=args.location,
+                pages=args.pages,
+                time_filter=args.time_filter,
+            )
         elif args.command == "scrape":
-            agent.scrape(keywords=args.keywords, location=args.location, pages=args.pages)
+            agent.scrape(
+                keywords=args.keywords,
+                location=args.location,
+                pages=args.pages,
+                time_filter=args.time_filter,
+            )
         elif args.command == "score":
             agent.score_pending()
         elif args.command == "enforce":

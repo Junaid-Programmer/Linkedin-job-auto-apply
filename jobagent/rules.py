@@ -11,6 +11,7 @@ import re
 from pathlib import Path
 
 from jobagent.applicants import applicant_count_allowed, job_applicant_count
+from jobagent.posted import posted_within
 
 try:
     import yaml
@@ -30,6 +31,7 @@ DEFAULT_RULES = {
     "preferred_keywords": [],
     "min_applicants": 0,
     "max_applicants": 0,
+    "posted_within": "all",
 }
 
 # alias -> canonical country name. Canonical names should match the
@@ -273,6 +275,14 @@ def evaluate(job: dict, rules: dict) -> dict:
         return {
             "ok": False,
             "reason": f"applicants {count} outside min={min_n} max={max_n}",
+        }
+
+    posted_window = rules.get("posted_within", "all")
+    posted_text = job.get("posted") or job.get("Posted") or ""
+    if not posted_within(posted_text, posted_window):
+        return {
+            "ok": False,
+            "reason": f"posted '{posted_text}' is older than {posted_window}",
         }
 
     return {"ok": True, "reason": ""}

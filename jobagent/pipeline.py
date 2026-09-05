@@ -67,7 +67,12 @@ class JobAgent:
         rules_location = rules.get("linkedin_location")
         location = location or rules_location or self.config.search_location
         pages = pages or self.config.search_pages
-        time_filter = self.config.search_time_filter if time_filter is None else time_filter
+        from jobagent.posted import posted_within, to_linkedin_tpr
+
+        posted_window = time_filter
+        if posted_window is None:
+            posted_window = rules.get("posted_within") or self.config.search_time_filter
+        time_filter = to_linkedin_tpr(posted_window)
         save_to = save_to or self.config.extra["scraped_jobs_file"]
 
         session = LinkedInSession(self.config.state_file, headless=headless)
@@ -87,6 +92,11 @@ class JobAgent:
             )
         finally:
             session.close()
+        before = len(jobs)
+        jobs = [j for j in jobs if posted_within(j.get("posted"), posted_window)]
+        dropped = before - len(jobs)
+        if dropped:
+            print(f"[scraper] dropped {dropped} jobs older than {posted_window}")
         save_jobs(jobs, save_to)
         return jobs
 
@@ -128,7 +138,7 @@ class JobAgent:
                 "title": row.get("Title"),
                 "company": row.get("Company"),
                 "location": row.get("Location"),
-                "posted": row.get("Posted"),
+                "posted": row.get("Posted") or row.get("Posted Time"),
                 "url": row.get("LinkedIn URL"),
                 "description": row.get("Description"),
                 "applicants": row.get("Applications Submitted"),
@@ -258,7 +268,7 @@ class JobAgent:
                 "title": row.get("Title"),
                 "company": row.get("Company"),
                 "location": row.get("Location"),
-                "posted": row.get("Posted"),
+                "posted": row.get("Posted") or row.get("Posted Time"),
                 "url": row.get("LinkedIn URL"),
                 "description": row.get("Description"),
                 "applicants": row.get("Applications Submitted"),
@@ -300,10 +310,13 @@ class JobAgent:
         keywords: str | None = None,
         location: str | None = None,
         pages: int | None = None,
+        time_filter: str | None = None,
     ) -> None:
         """Full pipeline: scrape -> sheet -> score -> tailor/skip."""
         print("== scraping LinkedIn ==")
-        jobs = self.scrape(keywords=keywords, location=location, pages=pages)
+        jobs = self.scrape(
+            keywords=keywords, location=location, pages=pages, time_filter=time_filter
+        )
         if not jobs:
             print("No jobs found.")
             return
