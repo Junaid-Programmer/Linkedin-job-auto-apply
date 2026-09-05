@@ -108,6 +108,10 @@ commented and you can turn a rule off by emptying its list.
 # Location sent to LinkedIn search (overrides LINKEDIN_SEARCH_LOCATION)
 linkedin_location: Europe
 
+# Skip jobs that already have too many (or too few) applicants. 0 = unused.
+min_applicants: 0
+max_applicants: 50
+
 # Job must be physically in one of these countries
 allow_countries:
   - Germany
@@ -148,8 +152,8 @@ Some notes:
    deduplicated by LinkedIn job ID.
 3. **Rules gate** (`jobagent/rules.py` + `rules.yaml`): every job is checked
    against your rules before scoring — country of the employer's location,
-   company blocklist, required/excluded keywords, work style. Failures are
-   marked `SKIPPED` with a reason.
+   company blocklist, required/excluded keywords, work style, and optional
+   min/max applicant counts. Failures are marked `SKIPPED` with a reason.
 4. **Score** (`jobagent/scoring.py`): each remaining unscored row is sent to
    the LLM with your profile; it returns a 0–100 score and reasons.
    `>= SCORE_THRESHOLD` becomes a target, otherwise `SKIPPED`.
@@ -159,7 +163,7 @@ Some notes:
 
 ## Google Sheet columns
 
-`Timestamp | Job ID | Title | Company | Location | Posted | LinkedIn URL | Description | Score | Match Reasons | Status | Apply Package`
+`Timestamp | Job ID | Title | Company | Location | Posted | LinkedIn URL | Description | Applications Submitted | Score | Match Reasons | Status | Apply Package`
 
 Status values: `NEW` → scored → `TARGET` / `SKIPPED` → `APPLY_READY` (with the
 path to the generated package).

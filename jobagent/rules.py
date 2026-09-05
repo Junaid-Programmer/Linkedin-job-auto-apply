@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from jobagent.applicants import applicant_count_allowed, job_applicant_count
+
 try:
     import yaml
 except ImportError:  # pragma: no cover
@@ -26,6 +28,8 @@ DEFAULT_RULES = {
     "employment_keywords": [],
     "level_keywords": [],
     "preferred_keywords": [],
+    "min_applicants": 0,
+    "max_applicants": 0,
 }
 
 # alias -> canonical country name. Canonical names should match the
@@ -261,5 +265,14 @@ def evaluate(job: dict, rules: dict) -> dict:
     levels = [str(e).strip().lower() for e in (rules.get("level_keywords", []) or []) if str(e).strip()]
     if levels and not any(e in title_and_desc for e in levels):
         return {"ok": False, "reason": "posting does not mention expected seniority level"}
+
+    min_n = rules.get("min_applicants", 0) or 0
+    max_n = rules.get("max_applicants", 0) or 0
+    count = job_applicant_count(job)
+    if not applicant_count_allowed(count if count is not None else "Unknown", min_n, max_n):
+        return {
+            "ok": False,
+            "reason": f"applicants {count} outside min={min_n} max={max_n}",
+        }
 
     return {"ok": True, "reason": ""}

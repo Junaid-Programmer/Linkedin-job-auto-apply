@@ -294,6 +294,7 @@ class LinkedInScraper:
             company = _first_text(card, COMPANY_SELECTORS)
             location = _first_text(card, LOCATION_SELECTORS)
             posted = _extract_posted(card)
+            applicants = _extract_applicants(card)
             jobs[job_id] = {
                 "id": job_id,
                 "title": title or "Unknown title",
@@ -302,6 +303,7 @@ class LinkedInScraper:
                 "posted": posted or "",
                 "url": f"{LINKEDIN_BASE}/jobs/view/{job_id}",
                 "description": "",
+                "applicants": applicants,
             }
             found += 1
 
@@ -339,6 +341,37 @@ class LinkedInScraper:
         description = re.sub(r"\n{3,}", "\n\n", description).strip()
         if description:
             jobs[job_id]["description"] = description
+        applicants = _extract_applicants(page)
+        if applicants is not None:
+            jobs[job_id]["applicants"] = applicants
+
+
+def _extract_applicants(parent) -> int | None:
+    """Read LinkedIn's 'X applicants' insight from a card or detail pane."""
+    from jobagent.applicants import parse_applicant_count
+
+    selectors = [
+        ".jobs-unified-top-card__applicant-count",
+        ".job-details-jobs-unified-top-card__applicant-count",
+        ".jobs-details-top-card__applicant-count",
+        ".tvm__text--neutral",
+        "ul.job-card-container__metadata-wrapper li span",
+        "li.job-card-container__metadata-item",
+        "span.job-card-container__metadata-item",
+        ".job-details-jobs-unified-top-card__tertiary-description-container",
+        ".jobs-unified-top-card__tertiary-description-container",
+    ]
+    texts = []
+    for selector in selectors:
+        try:
+            texts.extend(parent.locator(selector).all_inner_texts())
+        except (PlaywrightTimeoutError, Error):
+            continue
+    for text in texts:
+        count = parse_applicant_count(text)
+        if count is not None:
+            return count
+    return None
 
 
 def _extract_posted(card) -> str:

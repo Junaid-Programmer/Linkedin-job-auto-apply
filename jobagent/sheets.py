@@ -20,6 +20,7 @@ HEADERS = [
     "Posted",
     "LinkedIn URL",
     "Description",
+    "Applications Submitted",
     "Score",
     "Match Reasons",
     "Status",
@@ -27,10 +28,11 @@ HEADERS = [
 ]
 
 # Column letters (1-indexed) for the fields we update after scoring.
-SCORE_COL = 9
-REASONS_COL = 10
-STATUS_COL = 11
-PACKAGE_COL = 12
+APPLICANTS_COL = 9
+SCORE_COL = 10
+REASONS_COL = 11
+STATUS_COL = 12
+PACKAGE_COL = 13
 
 
 class JobSheet:
@@ -67,8 +69,28 @@ class JobSheet:
                 spreadsheet = self.client.create(self.sheet_name)
         worksheet = spreadsheet.sheet1
         first_row = worksheet.row_values(1)
+        old_headers = [
+            "Timestamp",
+            "Job ID",
+            "Title",
+            "Company",
+            "Location",
+            "Posted",
+            "LinkedIn URL",
+            "Description",
+            "Score",
+            "Match Reasons",
+            "Status",
+            "Apply Package",
+        ]
+        if first_row[: len(old_headers)] == old_headers and "Applications Submitted" not in first_row:
+            worksheet.insert_cols([["Applications Submitted"]], col=9)
+            first_row = worksheet.row_values(1)
         if first_row[: len(HEADERS)] != HEADERS:
-            worksheet.insert_row(HEADERS, 1)
+            if not any(first_row):
+                worksheet.update("A1", [HEADERS])
+            elif first_row != HEADERS:
+                worksheet.insert_row(HEADERS, 1)
         return spreadsheet
 
     def worksheet(self):
@@ -94,6 +116,9 @@ class JobSheet:
             if not job_id or job_id in existing:
                 continue
             existing.add(job_id)
+            applicants = job.get("applicants")
+            if applicants is None:
+                applicants = job.get("applicant_count") or job.get("applications_submitted") or ""
             rows.append(
                 [
                     datetime.now(timezone.utc).isoformat(),
@@ -104,6 +129,7 @@ class JobSheet:
                     job.get("posted", ""),
                     job.get("url", ""),
                     job.get("description", ""),
+                    applicants if applicants not in (None, "") else "",
                     "",
                     "",
                     "NEW",
@@ -152,16 +178,21 @@ class JobSheet:
             if value and value != "Job ID":
                 row_of[value] = idx
 
-        SCORE_COL = 9
-        REASONS_COL = 10
-        STATUS_COL = 11
-        PACKAGE_COL = 12
+        SCORE_COL = 10
+        REASONS_COL = 11
+        STATUS_COL = 12
+        PACKAGE_COL = 13
+        APPLICANTS_COL = 9
         _LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         cells = []
         for u in updates:
             row = row_of.get(str(u["job_id"]))
             if row is None:
                 continue
+            if "applicants" in u and u.get("applicants") is not None:
+                cells.append(
+                    {"range": f"{_LETTERS[APPLICANTS_COL-1]}{row}", "values": [[u["applicants"]]]}
+                )
             if "score" in u and u.get("score") is not None:
                 cells.append({"range": f"{_LETTERS[SCORE_COL-1]}{row}", "values": [[u["score"]]]})
             if "reasons" in u:

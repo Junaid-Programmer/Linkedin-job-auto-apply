@@ -131,6 +131,7 @@ class JobAgent:
                 "posted": row.get("Posted"),
                 "url": row.get("LinkedIn URL"),
                 "description": row.get("Description"),
+                "applicants": row.get("Applications Submitted"),
             }
             decision = evaluate_rules(job, rules)
             if not decision["ok"]:
@@ -260,6 +261,7 @@ class JobAgent:
                 "posted": row.get("Posted"),
                 "url": row.get("LinkedIn URL"),
                 "description": row.get("Description"),
+                "applicants": row.get("Applications Submitted"),
             }
             decision = evaluate_rules(job, rules)
             if not decision["ok"]:
