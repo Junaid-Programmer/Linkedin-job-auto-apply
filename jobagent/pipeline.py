@@ -111,6 +111,13 @@ class JobAgent:
         print(f"[sheets] added {added} new jobs, {skipped} already tracked")
         return added, skipped
 
+    def scrape_to_sheet(self) -> tuple[int, int]:
+        jobs = self.scrape()
+        if not jobs:
+            return (0, 0)
+        added, skipped = self.push_to_sheet(jobs)
+        return (len(jobs), added)
+
     def score_pending(self) -> tuple[int, int]:
         """Score all unscored rows (after the rules gate). Returns
         (scored, skipped_below_threshold)."""
