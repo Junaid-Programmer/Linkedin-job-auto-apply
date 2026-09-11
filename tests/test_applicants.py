@@ -33,6 +33,7 @@ def test_rules_skip_too_many_applicants():
         "company": "Acme",
         "location": "Berlin, Germany",
         "description": "Python role",
+        "posted": "2 hours ago",
         "applicants": 200,
     }
     rules = {
@@ -53,6 +54,7 @@ def test_rules_keep_when_count_in_range():
         "company": "Acme",
         "location": "Berlin, Germany",
         "description": "Python role",
+        "posted": "2 hours ago",
         "applicants": 23,
     }
     rules = {"allow_countries": [], "work_style": "any", "max_applicants": 50}

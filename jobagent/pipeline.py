@@ -12,6 +12,7 @@ from jobagent.linkedin import (
     save_jobs,
 )
 from jobagent.llm import LLMClient, LLMError
+from jobagent.prompts import apply_run_options
 from jobagent.rules import evaluate as evaluate_rules, load_rules
 from jobagent.scoring import keyword_score, score_job
 from jobagent.sheets import JobSheet
@@ -22,6 +23,7 @@ class JobAgent:
     def __init__(self, config: Config) -> None:
         self.config = config
         self.llm: LLMClient | None = None
+        self.run_options: dict | None = None
 
     # ------------------------------------------------------------------
     # LLM (lazy, so scraping works even before a key is configured)
@@ -62,16 +64,22 @@ class JobAgent:
         save_to: str | None = None,
         headless: bool = True,
     ) -> list[dict]:
-        keywords = keywords or self.config.search_keywords
-        rules = load_rules(self.config.extra.get("rules_file", "rules.yaml"))
+        rules = self._active_rules()
+        options = self.run_options or {}
+        keywords = keywords or options.get("keywords") or self.config.search_keywords
         rules_location = rules.get("linkedin_location")
-        location = location or rules_location or self.config.search_location
+        location = location or options.get("location") or rules_location or self.config.search_location
         pages = pages or self.config.search_pages
+        from jobagent.insights import keep_jobs_with_insights
         from jobagent.posted import posted_within, to_linkedin_tpr
 
         posted_window = time_filter
         if posted_window is None:
-            posted_window = rules.get("posted_within") or self.config.search_time_filter
+            posted_window = (
+                options.get("posted_within")
+                or rules.get("posted_within")
+                or self.config.search_time_filter
+            )
         time_filter = to_linkedin_tpr(posted_window)
         save_to = save_to or self.config.extra["scraped_jobs_file"]
 
@@ -92,6 +100,13 @@ class JobAgent:
             )
         finally:
             session.close()
+        before = len(jobs)
+        jobs = keep_jobs_with_insights(jobs)
+        missing = before - len(jobs)
+        if missing:
+            print(
+                f"[scraper] skipped {missing} jobs missing posted time or applicant count"
+            )
         before = len(jobs)
         jobs = [j for j in jobs if posted_within(j.get("posted"), posted_window)]
         dropped = before - len(jobs)
@@ -134,7 +149,7 @@ class JobAgent:
         )
         pending = sheet.get_unscored()
         print(f"[score] {len(pending)} jobs waiting to be scored")
-        rules = load_rules(self.config.extra.get("rules_file", "rules.yaml"))
+        rules = self._active_rules()
         scored_count = 0
         skipped_low = 0
         skipped_rules = 0
@@ -261,7 +276,7 @@ class JobAgent:
             self.config.google_sheet_name,
             self.config.google_sheet_id,
         )
-        rules = load_rules(self.config.extra.get("rules_file", "rules.yaml"))
+        rules = self._active_rules()
         rows = sheet.worksheet().get_all_records()
         blocked = 0
         ok = 0
@@ -345,6 +360,12 @@ class JobAgent:
         except ConfigError as exc:
             print(f"[run] tailoring skipped: {exc}")
         print("== done ==")
+
+    def _active_rules(self) -> dict:
+        rules = load_rules(self.config.extra.get("rules_file", "rules.yaml"))
+        if self.run_options:
+            return apply_run_options(rules, self.run_options)
+        return rules
 
 
 def _read_or_raise(path: Path, name: str, hint: str) -> str:

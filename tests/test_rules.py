@@ -17,6 +17,7 @@ def test_remote_only_keeps_remote_job():
         "location": "Berlin, Germany (Remote)",
         "description": "Python role",
         "posted": "2 hours ago",
+        "applicants": 12,
     }
     rules = {
         "allow_countries": ["Germany"],
@@ -33,6 +34,7 @@ def test_remote_only_skips_onsite_job():
         "location": "Berlin, Germany (On-site)",
         "description": "Python role",
         "posted": "2 hours ago",
+        "applicants": 12,
     }
     rules = {
         "allow_countries": ["Germany"],

@@ -284,21 +284,25 @@ def evaluate(job: dict, rules: dict) -> dict:
     if levels and not any(e in title_and_desc for e in levels):
         return {"ok": False, "reason": "posting does not mention expected seniority level"}
 
-    min_n = rules.get("min_applicants", 0) or 0
-    max_n = rules.get("max_applicants", 0) or 0
-    count = job_applicant_count(job)
-    if not applicant_count_allowed(count if count is not None else "Unknown", min_n, max_n):
-        return {
-            "ok": False,
-            "reason": f"applicants {count} outside min={min_n} max={max_n}",
-        }
-
     posted_window = rules.get("posted_within", "all")
     posted_text = job.get("posted") or job.get("Posted") or ""
+    if not str(posted_text).strip():
+        return {"ok": False, "reason": "posted time is missing"}
     if not posted_within(posted_text, posted_window):
         return {
             "ok": False,
             "reason": f"posted '{posted_text}' is older than {posted_window}",
+        }
+
+    min_n = rules.get("min_applicants", 0) or 0
+    max_n = rules.get("max_applicants", 0) or 0
+    count = job_applicant_count(job)
+    if count is None:
+        return {"ok": False, "reason": "applicants count is missing"}
+    if not applicant_count_allowed(count, min_n, max_n):
+        return {
+            "ok": False,
+            "reason": f"applicants {count} outside min={min_n} max={max_n}",
         }
 
     return {"ok": True, "reason": ""}

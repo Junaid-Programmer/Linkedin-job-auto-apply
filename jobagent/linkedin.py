@@ -23,13 +23,14 @@ from playwright.sync_api import (
     sync_playwright,
 )
 
+from jobagent.insights import (
+    enrich_from_texts,
+    jobs_needing_detail,
+    keep_jobs_with_insights,
+)
+
 LINKEDIN_BASE = "https://www.linkedin.com"
 JOB_ID_RE = re.compile(r"/jobs/view/(\d+)")
-POSTED_RE = re.compile(
-    r"^(reposted\s+)?(just now|today|yesterday|a (minute|hour|day|week|month) ago|"
-    r"(\d+)\s*(m|h|d|w)|(an? )?(\d+)?\s*(minute|hour|day|week|month)s? ago)$",
-    re.IGNORECASE,
-)
 
 # Candidate CSS selectors, listed most-recent-first so a LinkedIn UI
 # change only breaks the first entries, not the whole extractor.
@@ -57,6 +58,20 @@ DESCRIPTION_SELECTORS = [
     "#job-details",
 ]
 LIST_ITEM_SELECTOR = "li.scaffold-layout__list-item"
+INSIGHT_SELECTORS = [
+    "time",
+    "ul.job-card-container__footer-wrapper li",
+    ".jobs-unified-top-card__applicant-count",
+    ".job-details-jobs-unified-top-card__applicant-count",
+    ".jobs-details-top-card__applicant-count",
+    ".tvm__text--neutral",
+    "ul.job-card-container__metadata-wrapper li span",
+    "li.job-card-container__metadata-item",
+    "span.job-card-container__metadata-item",
+    ".job-details-jobs-unified-top-card__tertiary-description-container",
+    ".jobs-unified-top-card__tertiary-description-container",
+    ".job-details-jobs-unified-top-card__primary-description-container",
+]
 
 # How long to pause between actions, to stay well below LinkedIn's
 # aggressive-usage threshold.
@@ -245,7 +260,13 @@ class LinkedInScraper:
                 print(f"[scraper] {found} new jobs on page {page_index + 1}")
                 if found == 0 and page_index > 0:
                     break
-            return list(jobs.values())
+            kept = keep_jobs_with_insights(list(jobs.values()))
+            dropped = len(jobs) - len(kept)
+            if dropped:
+                print(
+                    f"[scraper] skipped {dropped} jobs missing posted time or applicant count"
+                )
+            return kept
         finally:
             page.close()
 
@@ -270,8 +291,8 @@ class LinkedInScraper:
     def _extract_page(self, page: Page, jobs: dict[str, dict]) -> int:
         """Extract every job card on the current results page.
 
-        Cards are collected, then each is opened to read the full job
-        description from the detail pane.
+        Cards are collected, then each is opened to read posted time,
+        applicant count, and the full job description from the detail pane.
         """
         cards = page.locator(LIST_ITEM_SELECTOR)
         card_count = cards.count()
@@ -279,6 +300,7 @@ class LinkedInScraper:
             return 0
 
         found = 0
+        page_ids: list[str] = []
         for i in range(card_count):
             card = cards.nth(i)
             href = _first_text(card, TITLE_SELECTORS, attr="href")
@@ -294,24 +316,26 @@ class LinkedInScraper:
             title = _first_text(card, TITLE_SELECTORS)
             company = _first_text(card, COMPANY_SELECTORS)
             location = _first_text(card, LOCATION_SELECTORS)
-            posted = _extract_posted(card)
-            applicants = _extract_applicants(card)
-            jobs[job_id] = {
+            job = {
                 "id": job_id,
                 "title": title or "Unknown title",
                 "company": company or "Unknown company",
                 "location": location or "Unknown location",
-                "posted": posted or "",
+                "posted": "",
                 "url": f"{LINKEDIN_BASE}/jobs/view/{job_id}",
                 "description": "",
-                "applicants": applicants,
+                "applicants": None,
             }
+            _fill_insights(job, card)
+            jobs[job_id] = job
+            page_ids.append(job_id)
             found += 1
 
-        # Read the description for each new card by opening it in the
-        # detail pane. Only the first few to keep request volume low.
-        new_ids = [jid for jid in jobs if not jobs[jid]["description"]]
-        for jid in new_ids[:15]:
+        page_jobs = {jid: jobs[jid] for jid in page_ids}
+        for jid in jobs_needing_detail(page_jobs):
+            self._read_description(page, jid, jobs)
+        page_jobs = {jid: jobs[jid] for jid in page_ids}
+        for jid in jobs_needing_detail(page_jobs):
             self._read_description(page, jid, jobs)
         return found
 
@@ -342,54 +366,31 @@ class LinkedInScraper:
         description = re.sub(r"\n{3,}", "\n\n", description).strip()
         if description:
             jobs[job_id]["description"] = description
-        applicants = _extract_applicants(page)
-        if applicants is not None:
-            jobs[job_id]["applicants"] = applicants
+        detail = page.locator(
+            ".jobs-search__job-details, "
+            ".job-view-layout, "
+            ".jobs-details, "
+            ".job-details-jobs-unified-top-card"
+        ).first
+        try:
+            if detail.count():
+                _fill_insights(jobs[job_id], detail)
+        except (PlaywrightTimeoutError, Error):
+            pass
 
 
-def _extract_applicants(parent) -> int | None:
-    """Read LinkedIn's 'X applicants' insight from a card or detail pane."""
-    from jobagent.applicants import parse_applicant_count
-
-    selectors = [
-        ".jobs-unified-top-card__applicant-count",
-        ".job-details-jobs-unified-top-card__applicant-count",
-        ".jobs-details-top-card__applicant-count",
-        ".tvm__text--neutral",
-        "ul.job-card-container__metadata-wrapper li span",
-        "li.job-card-container__metadata-item",
-        "span.job-card-container__metadata-item",
-        ".job-details-jobs-unified-top-card__tertiary-description-container",
-        ".jobs-unified-top-card__tertiary-description-container",
-    ]
-    texts = []
-    for selector in selectors:
+def _collect_texts(parent) -> list[str]:
+    texts: list[str] = []
+    for selector in INSIGHT_SELECTORS:
         try:
             texts.extend(parent.locator(selector).all_inner_texts())
         except (PlaywrightTimeoutError, Error):
             continue
-    for text in texts:
-        count = parse_applicant_count(text)
-        if count is not None:
-            return count
-    return None
+    return texts
 
 
-def _extract_posted(card) -> str:
-    """Look for a human-readable posted date ("2 days ago", "today"...)
-    anywhere on the job card, ignoring status badges like Viewed/Promoted."""
-    candidates = []
-    try:
-        candidates += card.locator("time").all_inner_texts()
-        candidates += card.locator("ul.job-card-container__footer-wrapper li").all_inner_texts()
-    except (PlaywrightTimeoutError, Error):
-        pass
-    for text in candidates:
-        for line in text.splitlines():
-            line = line.strip()
-            if POSTED_RE.match(line):
-                return line
-    return ""
+def _fill_insights(job: dict, parent) -> None:
+    enrich_from_texts(job, _collect_texts(parent))
 
 
 def _first_text(parent, selectors, attr: Optional[str] = None, default: str = "") -> str:

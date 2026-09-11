@@ -126,7 +126,7 @@ preferred_keywords: []
 # 7) APPLICANTS ALREADY SUBMITTED (optional)
 # ---------------------------------------------------------------------
 # Skip jobs based on LinkedIn's "X applicants" insight.
-# 0 = unused. Unknown counts are skipped only when a bound is set.
+# 0 = unused. Jobs that hide the count are always skipped.
 # Example: max_applicants: 50  skips jobs that already have 50+ applicants.
 min_applicants: 0
 max_applicants: 0

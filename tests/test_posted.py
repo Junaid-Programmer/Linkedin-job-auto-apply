@@ -52,6 +52,7 @@ def test_rules_skip_old_posting():
         "location": "Berlin, Germany",
         "description": "Python role",
         "posted": "2 days ago",
+        "applicants": 12,
     }
     rules = {
         "allow_countries": [],
@@ -70,6 +71,7 @@ def test_rules_keep_recent_posting():
         "location": "Berlin, Germany",
         "description": "Python role",
         "posted": "3 hours ago",
+        "applicants": 12,
     }
     rules = {"allow_countries": [], "work_style": "any", "posted_within": "7h"}
     assert evaluate(job, rules)["ok"] is True
