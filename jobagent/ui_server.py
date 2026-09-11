@@ -112,9 +112,15 @@ class UiApp:
 
     def start_run(self, payload: dict) -> dict:
         with self._lock:
-            self._run_status = "running"
-            self._scraped = None
-            self._reason = ""
+            if self._run_status == "running":
+                already = True
+            else:
+                already = False
+                self._run_status = "running"
+                self._scraped = None
+                self._reason = ""
+        if already:
+            return self.snapshot()
         status = self.snapshot()
         status["keywords"] = payload.get("keywords", "")
         status["country"] = payload.get("country", "")
@@ -218,7 +224,9 @@ class UiApp:
 
             client = gspread.authorize(credentials_from_token())
             return list_spreadsheets(client)
-        except Exception:
+        except Exception as exc:
+            with self._lock:
+                self._reason = str(exc) or "Failed to list spreadsheets"
             return []
 
     def _load_tabs(self, spreadsheet_id: str) -> list:
@@ -229,7 +237,9 @@ class UiApp:
 
             client = gspread.authorize(credentials_from_token())
             return list_tabs(client.open_by_key(spreadsheet_id))
-        except Exception:
+        except Exception as exc:
+            with self._lock:
+                self._reason = str(exc) or "Failed to list tabs"
             return []
 
 

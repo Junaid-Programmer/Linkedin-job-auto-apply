@@ -163,7 +163,7 @@
       statusEl.textContent = li + "\n" + sheet + (status.reason ? "\n" + status.reason : "");
       fillSelect(spreadsheetEl, status.spreadsheets || [], "id", "name", status.spreadsheet_id);
       fillSelect(tabEl, status.tabs || [], null, null, status.tab_name);
-      runBtn.disabled = !runReady(status);
+      runBtn.disabled = status.run_status === "running" || !runReady(status);
       runStatusEl.textContent = status.run_status || "idle";
       const n = status.scraped;
       scrapedEl.textContent = "Jobs scraped" + (n == null ? "" : ": " + n);
@@ -217,8 +217,12 @@
     });
     tabEl.addEventListener("change", saveSelect);
     ["input", "change"].forEach((ev) => {
-      keywordsEl.addEventListener(ev, () => { runBtn.disabled = !runReady(lastStatus); });
-      countryEl.addEventListener(ev, () => { runBtn.disabled = !runReady(lastStatus); });
+      keywordsEl.addEventListener(ev, () => {
+        runBtn.disabled = lastStatus.run_status === "running" || !runReady(lastStatus);
+      });
+      countryEl.addEventListener(ev, () => {
+        runBtn.disabled = lastStatus.run_status === "running" || !runReady(lastStatus);
+      });
     });
     runBtn.addEventListener("click", async () => {
       const status = await post("/api/run", {

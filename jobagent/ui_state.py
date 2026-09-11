@@ -17,7 +17,12 @@ def load_ui_state(path: str = DEFAULT_PATH) -> dict:
     file_path = Path(path)
     if not file_path.exists():
         return state
-    data = json.loads(file_path.read_text(encoding="utf-8"))
+    try:
+        data = json.loads(file_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return state
+    if not isinstance(data, dict):
+        return state
     for key in _KNOWN_KEYS:
         if key in data:
             state[key] = data[key]

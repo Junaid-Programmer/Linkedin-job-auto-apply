@@ -84,3 +84,60 @@ def test_index_html_has_required_labels():
         "Jobs scraped",
     ):
         assert needle in html
+    assert 'run_status === "running"' in html
+
+
+def test_start_run_while_running_does_not_spawn_thread(monkeypatch):
+    from jobagent.ui_server import UiApp
+
+    started = []
+
+    class FakeThread:
+        def __init__(self, target=None, args=(), daemon=None):
+            started.append("created")
+
+        def start(self):
+            started.append("start")
+
+    monkeypatch.setattr("jobagent.ui_server.threading.Thread", FakeThread)
+    app = UiApp(state_file="nope")
+    app._run_status = "running"
+    snap = app.start_run({"keywords": "va", "country": "United States"})
+    assert snap["run_status"] == "running"
+    assert started == []
+
+
+def test_load_spreadsheets_sets_reason_on_failure(monkeypatch):
+    from jobagent import ui_server
+
+    monkeypatch.setattr(ui_server, "google_connected", lambda *a, **k: True)
+    monkeypatch.setattr(ui_server, "credentials_from_token", lambda *a, **k: object())
+
+    import gspread
+
+    def boom(_creds):
+        raise RuntimeError("Drive list failed")
+
+    monkeypatch.setattr(gspread, "authorize", boom)
+    app = ui_server.UiApp(state_file="nope")
+    rows = app._load_spreadsheets()
+    assert rows == []
+    assert app._reason
+
+
+def test_load_tabs_sets_reason_on_failure(monkeypatch):
+    from jobagent import ui_server
+
+    monkeypatch.setattr(ui_server, "google_connected", lambda *a, **k: True)
+    monkeypatch.setattr(ui_server, "credentials_from_token", lambda *a, **k: object())
+
+    import gspread
+
+    def boom(_creds):
+        raise RuntimeError("Sheets list failed")
+
+    monkeypatch.setattr(gspread, "authorize", boom)
+    app = ui_server.UiApp(state_file="nope")
+    rows = app._load_tabs("sid")
+    assert rows == []
+    assert app._reason

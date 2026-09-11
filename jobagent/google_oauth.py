@@ -30,14 +30,17 @@ def credentials_from_token(path: str = TOKEN_FILE):
 def google_connected(token_path: str = TOKEN_FILE) -> bool:
     if not token_exists(token_path):
         return False
-    creds = credentials_from_token(token_path)
+    try:
+        creds = credentials_from_token(token_path)
+    except Exception:
+        return False
     if creds.valid:
         return True
     return bool(creds.expired and creds.refresh_token)
 
 
 def list_spreadsheets(client) -> list[dict]:
-    return [{"id": sheet.id, "name": sheet.title} for sheet in client.listall()]
+    return [{"id": sheet.id, "name": sheet.title} for sheet in client.openall()]
 
 
 def list_tabs(spreadsheet) -> list[str]:

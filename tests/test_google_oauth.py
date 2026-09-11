@@ -16,7 +16,7 @@ class FakeSheet:
 
 
 class FakeClient:
-    def listall(self):
+    def openall(self):
         return [FakeSheet("id1", "Linkedin Jobs"), FakeSheet("id2", "Other")]
 
 
@@ -41,6 +41,14 @@ def test_client_and_token_flags(tmp_path: Path):
 
 def test_google_connected_false_without_token(tmp_path: Path):
     assert google_connected(str(tmp_path / "token.json")) is False
+
+
+def test_google_connected_false_for_corrupt_token(tmp_path: Path):
+    missing = tmp_path / "missing.json"
+    assert google_connected(str(missing)) is False
+    corrupt = tmp_path / "token.json"
+    corrupt.write_text("{not-json", encoding="utf-8")
+    assert google_connected(str(corrupt)) is False
 
 
 def test_list_spreadsheets_and_tabs():

@@ -91,6 +91,11 @@ class JobSheet:
             try:
                 spreadsheet = self.client.open_by_key(self.sheet_id)
             except gspread.SpreadsheetNotFound:
+                if self._credentials is not None:
+                    raise RuntimeError(
+                        f"Could not open spreadsheet by ID {self.sheet_id}. "
+                        "Pick another spreadsheet or sign in with Google again."
+                    )
                 raise RuntimeError(
                     f"Could not open spreadsheet by ID {self.sheet_id}. "
                     "Share it with the service account email (Editor access)."
