@@ -49,11 +49,29 @@ def control_header_needs_reset(first_row: list) -> bool:
     return list(first_row[: len(CONTROL_HEADERS)]) != CONTROL_HEADERS
 
 
+def resolve_worksheet(spreadsheet, worksheet_title: str = ""):
+    if worksheet_title:
+        return spreadsheet.worksheet(worksheet_title)
+    return spreadsheet.sheet1
+
+
 class JobSheet:
-    def __init__(self, service_account_file: str, sheet_name: str, sheet_id: str = "") -> None:
+    def __init__(
+        self,
+        service_account_file: str = "",
+        sheet_name: str = "",
+        sheet_id: str = "",
+        credentials=None,
+        worksheet_title: str = "",
+    ) -> None:
         self.sheet_name = sheet_name
         self.sheet_id = sheet_id
-        self.client = self._build_client(service_account_file)
+        self.worksheet_title = worksheet_title
+        self._credentials = credentials
+        if credentials is not None:
+            self.client = gspread.authorize(credentials)
+        else:
+            self.client = self._build_client(service_account_file)
         self.sheet = self._ensure_sheet()
 
     @staticmethod
@@ -81,8 +99,10 @@ class JobSheet:
             try:
                 spreadsheet = self.client.open(self.sheet_name)
             except gspread.SpreadsheetNotFound:
+                if self._credentials is not None:
+                    raise RuntimeError("Pick an existing spreadsheet")
                 spreadsheet = self.client.create(self.sheet_name)
-        worksheet = spreadsheet.sheet1
+        worksheet = resolve_worksheet(spreadsheet, self.worksheet_title)
         first_row = worksheet.row_values(1)
         old_headers = [
             "Timestamp",
@@ -116,7 +136,7 @@ class JobSheet:
             worksheet.update("A1", [CONTROL_HEADERS])
 
     def worksheet(self):
-        return self.sheet.sheet1
+        return resolve_worksheet(self.sheet, self.worksheet_title)
 
     def control_worksheet(self):
         return self.sheet.worksheet("Control")
