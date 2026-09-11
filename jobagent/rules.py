@@ -177,6 +177,22 @@ def _allowed_countries(rules: dict) -> set[str]:
     return {str(c).strip().lower() for c in rules.get("allow_countries", []) if str(c).strip()}
 
 
+def normalize_work_style(value: str) -> str:
+    text = str(value or "any").strip().lower().replace("_", " ").replace("-", " ")
+    text = re.sub(r"\s+", " ", text)
+    aliases = {
+        "any": "any",
+        "remote": "remote",
+        "remote only": "remote",
+        "hybrid": "hybrid",
+        "hybrid only": "hybrid",
+        "on site": "on-site",
+        "onsite": "on-site",
+        "on site only": "on-site",
+    }
+    return aliases.get(text, text)
+
+
 def _detect_work_style(job: dict) -> str | None:
     """remote / hybrid / on-site inferred from the location string."""
     loc = (job.get("location") or "").lower()
@@ -247,7 +263,7 @@ def evaluate(job: dict, rules: dict) -> dict:
             return {"ok": False, "reason": f"posting contains excluded term '{forbidden}'"}
 
     # ---- 4) Work-style gate -----------------------------------------
-    policy = str(rules.get("work_style", "any")).strip().lower()
+    policy = normalize_work_style(rules.get("work_style", "any"))
     if policy != "any":
         style = _detect_work_style(job)
         if style is None:

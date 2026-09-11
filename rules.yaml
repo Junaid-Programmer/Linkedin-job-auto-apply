@@ -96,7 +96,7 @@ excluded_keywords:
 # ---------------------------------------------------------------------
 # 4) WORK STYLE (remote / hybrid / on-site)
 # ---------------------------------------------------------------------
-# any | remote only | on-site only | hybrid only
+# any | remote | remote only | on-site | on-site only | hybrid | hybrid only
 work_style: remote
 
 # ---------------------------------------------------------------------
