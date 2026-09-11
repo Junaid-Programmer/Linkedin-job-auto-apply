@@ -11,6 +11,8 @@ from typing import Optional
 import gspread
 from google.oauth2 import service_account
 
+from jobagent.control import CONTROL_HEADERS, control_from_row
+
 HEADERS = [
     "Timestamp",
     "Job ID",
@@ -39,6 +41,12 @@ def header_needs_reset(first_row: list) -> bool:
     if not first_row or not any(first_row):
         return True
     return list(first_row[: len(HEADERS)]) != HEADERS
+
+
+def control_header_needs_reset(first_row: list) -> bool:
+    if not first_row or not any(first_row):
+        return True
+    return list(first_row[: len(CONTROL_HEADERS)]) != CONTROL_HEADERS
 
 
 class JobSheet:
@@ -95,10 +103,35 @@ class JobSheet:
             first_row = worksheet.row_values(1)
         if header_needs_reset(first_row):
             worksheet.update("A1", [HEADERS])
+        self._ensure_control(spreadsheet)
         return spreadsheet
+
+    def _ensure_control(self, spreadsheet):
+        try:
+            worksheet = spreadsheet.worksheet("Control")
+        except gspread.WorksheetNotFound:
+            worksheet = spreadsheet.add_worksheet(title="Control", rows=100, cols=10)
+        first_row = worksheet.row_values(1)
+        if control_header_needs_reset(first_row):
+            worksheet.update("A1", [CONTROL_HEADERS])
 
     def worksheet(self):
         return self.sheet.sheet1
+
+    def control_worksheet(self):
+        return self.sheet.worksheet("Control")
+
+    def read_control(self) -> dict:
+        return control_from_row(self.control_worksheet().row_values(2))
+
+    def write_control(self, start=None, status=None) -> None:
+        cells = []
+        if start is not None:
+            cells.append({"range": "E2", "values": [["TRUE" if start else "FALSE"]]})
+        if status is not None:
+            cells.append({"range": "F2", "values": [[status]]})
+        if cells:
+            self.control_worksheet().batch_update(cells, value_input_option="USER_ENTERED")
 
     def _job_ids(self) -> set[str]:
         worksheet = self.worksheet()
