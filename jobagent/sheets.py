@@ -35,6 +35,12 @@ STATUS_COL = 12
 PACKAGE_COL = 13
 
 
+def header_needs_reset(first_row: list) -> bool:
+    if not first_row or not any(first_row):
+        return True
+    return list(first_row[: len(HEADERS)]) != HEADERS
+
+
 class JobSheet:
     def __init__(self, service_account_file: str, sheet_name: str, sheet_id: str = "") -> None:
         self.sheet_name = sheet_name
@@ -49,6 +55,7 @@ class JobSheet:
             scopes=[
                 "https://spreadsheets.google.com/feeds",
                 "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive",
             ],
         )
         return gspread.authorize(credentials)
@@ -86,11 +93,8 @@ class JobSheet:
         if first_row[: len(old_headers)] == old_headers and "Applications Submitted" not in first_row:
             worksheet.insert_cols([["Applications Submitted"]], col=9)
             first_row = worksheet.row_values(1)
-        if first_row[: len(HEADERS)] != HEADERS:
-            if not any(first_row):
-                worksheet.update("A1", [HEADERS])
-            elif first_row != HEADERS:
-                worksheet.insert_row(HEADERS, 1)
+        if header_needs_reset(first_row):
+            worksheet.update("A1", [HEADERS])
         return spreadsheet
 
     def worksheet(self):
