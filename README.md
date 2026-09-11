@@ -128,7 +128,7 @@ allow_remote_unknown: true
 excluded_companies: []      # e.g. ["spam staffing"]
 required_keywords: []       # posting must contain ALL of these
 excluded_keywords: []       # posting containing ANY of these is rejected
-work_style: any             # any | remote only | on-site only | hybrid only
+work_style: any             # any | remote | remote only | hybrid | hybrid only | on-site | on-site only
 employment_keywords: []     # e.g. ["full-time"] (any-of)
 level_keywords: []          # e.g. ["junior", "entry level"] (any-of)
 preferred_keywords: []      # not a gate; nudges the offline scorer
