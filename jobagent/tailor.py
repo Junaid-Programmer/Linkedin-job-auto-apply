@@ -118,14 +118,13 @@ def prepare_application_package_fallback(
         "Review the tailored sections below before submitting.\n\n"
         f"---\n\n{resume}\n"
     )
+    strengths = ", ".join(matched[:3]) if matched else "the skills in my resume"
     note = (
         f"Dear Hiring Manager,\n\n"
         f"I'm applying for the {title} position at {company}. "
-        f"My background in {', '.join(matched[:3]) if matched else 'operations and project management'} "
-        f"matches the requirements of this role. "
-        f"My resume (attached) details my experience supporting coaches, entrepreneurs, "
-        f"and business leaders with day-to-day operations.\n\n"
-        f"I'd welcome the opportunity to discuss how I can support your team.\n\n"
+        f"My background in {strengths} matches the requirements of this role. "
+        f"Please see my resume for relevant experience.\n\n"
+        f"I'd welcome the opportunity to discuss how I can contribute to your team.\n\n"
         f"Best regards,\n[Your name]"
     )
 
