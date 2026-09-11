@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local job control</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f4f4f5; color: #18181b; }
+    main { max-width: 28rem; margin: 2rem auto; padding: 1.5rem; background: #fff; border: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 0.75rem; }
+    label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
+    input, select, button { font: inherit; padding: 0.4rem 0.5rem; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: 0.5; }
+    #status { min-height: 3rem; font-size: 0.9rem; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <main>
+    <button type="button" id="linkedin-btn">Connect LinkedIn</button>
+    <button type="button" id="google-btn">Sign in with Google</button>
+    <div id="status"></div>
+    <label>Spreadsheet
+      <select id="spreadsheet"></select>
+    </label>
+    <label>Tab
+      <select id="tab"></select>
+    </label>
+    <label>Title keywords
+      <input id="keywords" type="text" autocomplete="off">
+    </label>
+    <label>Posted
+      <select id="posted">
+        <option value="2h">2h</option>
+        <option value="5h">5h</option>
+        <option value="7h">7h</option>
+        <option value="24h">24h</option>
+        <option value="2day">2day</option>
+        <option value="7day">7day</option>
+        <option value="all" selected>all</option>
+      </select>
+    </label>
+    <label>Country
+      <select id="country">
+        <option value=""></option>
+        <option>Austria</option>
+        <option>Belgium</option>
+        <option>Bulgaria</option>
+        <option>Croatia</option>
+        <option>Cyprus</option>
+        <option>Czechia</option>
+        <option>Denmark</option>
+        <option>Estonia</option>
+        <option>Finland</option>
+        <option>France</option>
+        <option>Germany</option>
+        <option>Greece</option>
+        <option>Hungary</option>
+        <option>Ireland</option>
+        <option>Italy</option>
+        <option>Latvia</option>
+        <option>Lithuania</option>
+        <option>Luxembourg</option>
+        <option>Malta</option>
+        <option>Netherlands</option>
+        <option>Poland</option>
+        <option>Portugal</option>
+        <option>Romania</option>
+        <option>Slovakia</option>
+        <option>Slovenia</option>
+        <option>Spain</option>
+        <option>Sweden</option>
+        <option>Iceland</option>
+        <option>Norway</option>
+        <option>Switzerland</option>
+        <option>United States</option>
+        <option>Canada</option>
+        <option>United Kingdom</option>
+        <option>Australia</option>
+      </select>
+    </label>
+    <label>Work style
+      <select id="work-style">
+        <option>Remote</option>
+        <option>Hybrid</option>
+        <option>On-site</option>
+      </select>
+    </label>
+    <label>Applicants
+      <select id="applicants">
+        <option value=""></option>
+        <option>Less than 5</option>
+        <option>Less than 10</option>
+        <option>Less than 15</option>
+        <option>Less than 25</option>
+        <option>Less than 40</option>
+      </select>
+    </label>
+    <label>Job type
+      <select id="job-type">
+        <option>Full-time</option>
+        <option>Part-time</option>
+        <option>Contract</option>
+        <option>Internship</option>
+      </select>
+    </label>
+    <button type="button" id="run-btn" disabled>Run</button>
+    <div id="run-status"></div>
+    <div id="scraped">Jobs scraped</div>
+  </main>
+  <script>
+    const keywordsEl = document.getElementById("keywords");
+    const countryEl = document.getElementById("country");
+    const postedEl = document.getElementById("posted");
+    const workStyleEl = document.getElementById("work-style");
+    const applicantsEl = document.getElementById("applicants");
+    const jobTypeEl = document.getElementById("job-type");
+    const spreadsheetEl = document.getElementById("spreadsheet");
+    const tabEl = document.getElementById("tab");
+    const runBtn = document.getElementById("run-btn");
+    const statusEl = document.getElementById("status");
+    const runStatusEl = document.getElementById("run-status");
+    const scrapedEl = document.getElementById("scraped");
+    let lastStatus = {};
+    let pollTimer = null;
+
+    function runReady(status) {
+      if (!status.linkedin) return false;
+      if (!status.google) return false;
+      if (!String(status.spreadsheet_id || "").trim() || !String(status.tab_name || "").trim()) return false;
+      if (!keywordsEl.value.trim()) return false;
+      if (!countryEl.value.trim()) return false;
+      return true;
+    }
+
+    function fillSelect(el, items, valueKey, labelKey, selected) {
+      const current = selected || el.value;
+      el.innerHTML = "";
+      const empty = document.createElement("option");
+      empty.value = "";
+      el.appendChild(empty);
+      items.forEach((item) => {
+        const opt = document.createElement("option");
+        if (typeof item === "string") {
+          opt.value = item;
+          opt.textContent = item;
+        } else {
+          opt.value = item[valueKey];
+          opt.textContent = item[labelKey];
+        }
+        el.appendChild(opt);
+      });
+      if (current) el.value = current;
+    }
+
+    function render(status) {
+      lastStatus = status;
+      const li = status.linkedin ? "LinkedIn connected" : "LinkedIn not connected";
+      const sheet = status.google
+        ? (status.spreadsheet_name
+            ? "Sheet connected: " + status.spreadsheet_name + (status.tab_name ? " / " + status.tab_name : "")
+            : "Sheet connected")
+        : "Sheet not connected";
+      statusEl.textContent = li + "\n" + sheet + (status.reason ? "\n" + status.reason : "");
+      fillSelect(spreadsheetEl, status.spreadsheets || [], "id", "name", status.spreadsheet_id);
+      fillSelect(tabEl, status.tabs || [], null, null, status.tab_name);
+      runBtn.disabled = !runReady(status);
+      runStatusEl.textContent = status.run_status || "idle";
+      const n = status.scraped;
+      scrapedEl.textContent = "Jobs scraped" + (n == null ? "" : ": " + n);
+      if (status.run_status === "running") {
+        if (!pollTimer) pollTimer = setInterval(refresh, 2000);
+      } else if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    }
+
+    async function refresh() {
+      const status = await (await fetch("/api/status")).json();
+      render(status);
+    }
+
+    async function post(path, body) {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : "{}",
+      });
+      return res.json();
+    }
+
+    async function saveSelect() {
+      const sid = spreadsheetEl.value;
+      const name = (spreadsheetEl.selectedOptions[0] && spreadsheetEl.selectedOptions[0].textContent) || "";
+      const tab = tabEl.value;
+      const status = await post("/api/select", {
+        spreadsheet_id: sid,
+        spreadsheet_name: name,
+        tab_name: tab,
+      });
+      render(status);
+    }
+
+    document.getElementById("linkedin-btn").addEventListener("click", async () => {
+      render(await post("/api/linkedin/connect"));
+    });
+    document.getElementById("google-btn").addEventListener("click", async () => {
+      render(await post("/api/google/connect"));
+    });
+    spreadsheetEl.addEventListener("change", async () => {
+      const sid = spreadsheetEl.value;
+      if (sid) {
+        const tabs = await (await fetch("/api/tabs?spreadsheet_id=" + encodeURIComponent(sid))).json();
+        fillSelect(tabEl, tabs || [], null, null, "");
+      }
+      await saveSelect();
+    });
+    tabEl.addEventListener("change", saveSelect);
+    ["input", "change"].forEach((ev) => {
+      keywordsEl.addEventListener(ev, () => { runBtn.disabled = !runReady(lastStatus); });
+      countryEl.addEventListener(ev, () => { runBtn.disabled = !runReady(lastStatus); });
+    });
+    runBtn.addEventListener("click", async () => {
+      const status = await post("/api/run", {
+        keywords: keywordsEl.value,
+        country: countryEl.value,
+        posted: postedEl.value,
+        work_style: workStyleEl.value,
+        applicants: applicantsEl.value,
+        job_type: jobTypeEl.value,
+      });
+      render(status);
+    });
+    refresh();
+  </script>
+</body>
+</html>

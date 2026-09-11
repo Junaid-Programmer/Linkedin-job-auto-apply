@@ -25,6 +25,30 @@ scrape  →  Google Sheet  →  rules gate (region/company/keywords)
   session. Scraping still technically conflicts with LinkedIn's ToS, so use the
   tools at a gentle pace (built-in delays) and at your own risk.
 
+## Local control page (Windows)
+
+Clone the repo, then run two commands:
+
+```bat
+setup.bat
+run-ui.bat
+```
+
+`setup.bat` creates `.venv`, installs requirements, and installs Playwright Chromium.
+`run-ui.bat` runs `python run.py ui`, which starts a local page at `http://127.0.0.1:8765` and opens the default browser.
+
+On that page:
+
+1. Copy `google_oauth_client.json.example` to `google_oauth_client.json` and fill in the Desktop OAuth client (the project owner may commit the real file).
+2. Click **Connect LinkedIn**. Log in by hand; the session is saved to `data/linkedin_state.json`.
+3. Click **Sign in with Google**. Tokens are saved to `data/google_token.json`.
+4. Pick a spreadsheet, then a tab.
+5. Fill title keywords and country, then click **Run**.
+
+This page does **not** click Apply. Jobs are written to the chosen Sheet tab. You apply by hand.
+
+`python run.py watch` is unchanged (Sheet Control tab).
+
 ## Setup
 
 ```bash
@@ -100,6 +124,9 @@ python run.py tailor                                   # prepare packages for ta
 
 # Watch the Sheet Control tab (no keyword prompts)
 python run.py watch
+
+# Local control page (does not click Apply)
+python run.py ui
 ```
 
 ## Control tab

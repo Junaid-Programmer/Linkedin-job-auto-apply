@@ -6,6 +6,7 @@ Commands:
   python run.py run   [--keywords ...] [--location ...] [--pages N] [--posted 24h]
   python run.py scrape [--keywords ...] [--location ...] [--pages N] [--posted 24h]
   python run.py watch
+  python run.py ui
   python run.py score
   python run.py enforce   (re-check scored rows against rules.yaml)
   python run.py tailor
@@ -98,6 +99,7 @@ def main() -> None:
             help="Applicant max or min-max (e.g. 50 or 10-50). Blank = all",
         )
     sub.add_parser("watch", help="Watch the Control tab and scrape when Start is ticked")
+    sub.add_parser("ui", help="Open the local control page")
     sub.add_parser("score", help="Score unscored jobs in the sheet")
     sub.add_parser(
         "enforce",
@@ -130,6 +132,12 @@ def main() -> None:
         except RuntimeError as exc:
             print(f"error: {exc}", file=sys.stderr)
             sys.exit(1)
+        return
+
+    if args.command == "ui":
+        from jobagent.ui_server import main as ui_main
+
+        ui_main()
         return
 
     if args.command == "check":
