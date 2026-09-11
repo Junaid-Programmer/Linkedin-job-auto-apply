@@ -85,9 +85,11 @@ the login here directly and paste your credentials when prompted with
 
 ```bash
 # Full pipeline: scrape -> sheet -> score -> tailor/skip
+# Asks for keywords and location. Work style is always Remote.
+# Applicants and posted: press Enter to keep all.
 python run.py run
 
-# With custom search
+# Skip the prompts with flags
 python run.py run --keywords "senior python developer" --location "Berlin" --pages 3 --posted 24h
 
 # Individual steps
@@ -95,7 +97,30 @@ python run.py scrape --keywords "fastapi" --pages 2   # scrape only
 python run.py score                                    # score unscored rows
 python run.py enforce                                  # re-check scored rows against rules.yaml
 python run.py tailor                                   # prepare packages for targets
+
+# Watch the Sheet Control tab (no keyword prompts)
+python run.py watch
 ```
+
+## Control tab
+
+The spreadsheet has a **Control** tab. Fill the filters, tick Start, and keep
+`python run.py watch` running on your PC. It polls about every 10 seconds,
+scrapes LinkedIn into the jobs sheet, then unticks Start. It does not score,
+tailor, or click Apply — apply by hand.
+
+| Column | What to put |
+|---|---|
+| Keywords | Search keywords (required) |
+| Location | Search location (required) |
+| Applicants | Max or min-max (e.g. `50` or `10-50`). Blank = all |
+| Posted | `2h`, `5h`, `7h`, `24h`, `2day`, `7day`, or `all`. Blank = all |
+| Start | Tick/TRUE to start a scrape |
+| Status | Written by the watcher (`running`, then `done` or `error`) |
+
+Work style is always Remote. It is not a Control field.
+
+Fill Keywords + Location, tick Start. Status shows running then done. Apply by hand.
 
 ## Where the rules live: `rules.yaml`
 
@@ -149,15 +174,18 @@ Some notes:
 ## How it works
 
 1. **Scrape** (`jobagent/linkedin.py`): Playwright opens the LinkedIn job
-   search for your keywords, walks the result pages at a human-like pace, reads
-   the full description of each listing, and saves to `data/scraped_jobs.json`.
+   search for your keywords, walks the result pages at a human-like pace, opens
+   every listing to read posted time, applicant count, and the full description,
+   and saves to `data/scraped_jobs.json`. Jobs that still hide posted time or
+   applicant count are skipped.
 2. **Sheet** (`jobagent/sheets.py`): new jobs are appended to the spreadsheet,
    deduplicated by LinkedIn job ID.
 3. **Rules gate** (`jobagent/rules.py` + `rules.yaml`): every job is checked
    against your rules before scoring — country of the employer's location,
-   company blocklist, required/excluded keywords, work style, optional
-   min/max applicant counts, and posted-time window (`2h`, `5h`, `7h`, `24h`,
-   `2day`, `7day`, `all`). Failures are marked `SKIPPED` with a reason.
+    company blocklist, required/excluded keywords, work style, optional
+    min/max applicant counts, and posted-time window (`2h`, `5h`, `7h`, `24h`,
+    `2day`, `7day`, `all`). Missing posted time or a hidden applicant count is
+    always skipped. Failures are marked `SKIPPED` with a reason.
 4. **Score** (`jobagent/scoring.py`): each remaining unscored row is sent to
    the LLM with your profile; it returns a 0–100 score and reasons.
    `>= SCORE_THRESHOLD` becomes a target, otherwise `SKIPPED`.

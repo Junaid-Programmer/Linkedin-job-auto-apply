@@ -1,5 +1,13 @@
 from jobagent.control import options_from_control
 
+POLL_SECONDS = 10
+
+
+def watch_loop(sheet, agent, sleep_fn, scrape_fn=None, should_continue=lambda: True) -> None:
+    while should_continue():
+        handle_control_poll(sheet, agent, scrape_fn=scrape_fn)
+        sleep_fn(POLL_SECONDS)
+
 
 def handle_control_poll(sheet, agent, scrape_fn=None) -> str:
     control = sheet.read_control()

@@ -5,6 +5,7 @@ Commands:
   python run.py login
   python run.py run   [--keywords ...] [--location ...] [--pages N] [--posted 24h]
   python run.py scrape [--keywords ...] [--location ...] [--pages N] [--posted 24h]
+  python run.py watch
   python run.py score
   python run.py enforce   (re-check scored rows against rules.yaml)
   python run.py tailor
@@ -15,10 +16,14 @@ from __future__ import annotations
 import argparse
 import getpass
 import sys
+import time
 
 from jobagent.config import Config, ConfigError
 from jobagent.linkedin import LinkedInSession, login_credentials, login_interactive
 from jobagent.pipeline import JobAgent
+from jobagent.prompts import resolve_run_options
+from jobagent.sheets import JobSheet
+from jobagent.watch import watch_loop
 
 
 def check_setup(config: Config) -> None:
@@ -67,7 +72,7 @@ def check_setup(config: Config) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="job-agent", description=__doc__)
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(dest="command")
 
     login = sub.add_parser("login", help="Log in to LinkedIn and save your session")
     login.add_argument(
@@ -88,6 +93,11 @@ def main() -> None:
             dest="time_filter",
             help="Posted window: 2h, 5h, 7h, 24h, 2day, 7day, or all",
         )
+        p.add_argument(
+            "--applicants",
+            help="Applicant max or min-max (e.g. 50 or 10-50). Blank = all",
+        )
+    sub.add_parser("watch", help="Watch the Control tab and scrape when Start is ticked")
     sub.add_parser("score", help="Score unscored jobs in the sheet")
     sub.add_parser(
         "enforce",
@@ -96,6 +106,13 @@ def main() -> None:
     sub.add_parser("tailor", help="Prepare application packages for targets")
 
     args = parser.parse_args()
+    if not args.command:
+        args.command = "run"
+        args.keywords = None
+        args.location = None
+        args.pages = None
+        args.time_filter = None
+        args.applicants = None
     config = Config.from_env()
 
     if args.command == "login":
@@ -121,6 +138,12 @@ def main() -> None:
 
     agent = JobAgent(config)
     try:
+        if args.command in ("run", "scrape"):
+            options = resolve_run_options(args)
+            agent.run_options = options
+            args.keywords = options["keywords"]
+            args.location = options["location"]
+            args.time_filter = options["posted_within"]
         if args.command == "run":
             agent.run(
                 keywords=args.keywords,
@@ -135,6 +158,15 @@ def main() -> None:
                 pages=args.pages,
                 time_filter=args.time_filter,
             )
+        elif args.command == "watch":
+            config.require_sheets()
+            sheet = JobSheet(
+                config.google_service_account_file,
+                config.google_sheet_name,
+                config.google_sheet_id,
+            )
+            print("Watching Control tab. Fill Keywords + Location, then tick Start.")
+            watch_loop(sheet, agent, sleep_fn=time.sleep)
         elif args.command == "score":
             agent.score_pending()
         elif args.command == "enforce":

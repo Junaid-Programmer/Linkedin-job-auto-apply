@@ -1,4 +1,4 @@
-from jobagent.watch import handle_control_poll
+from jobagent.watch import POLL_SECONDS, handle_control_poll, watch_loop
 
 
 class FakeSheet:
@@ -60,3 +60,17 @@ def test_poll_scrape_error_writes_status():
 
     assert handle_control_poll(sheet, FakeAgent(), scrape_fn=scrape) == "error"
     assert "login" in sheet.control["status"].lower() or "error" in sheet.control["status"].lower()
+
+
+def test_watch_loop_polls_then_sleeps():
+    sheet = FakeSheet({"start": False, "keywords": "python", "location": "Europe", "applicants": "", "posted": ""})
+    sleeps = []
+    ticks = {"n": 0}
+
+    def should_continue():
+        ticks["n"] += 1
+        return ticks["n"] <= 2
+
+    watch_loop(sheet, FakeAgent(), sleep_fn=lambda s: sleeps.append(s), should_continue=should_continue)
+    assert sleeps == [POLL_SECONDS, POLL_SECONDS]
+    assert POLL_SECONDS == 10
