@@ -216,7 +216,12 @@ def login_credentials(state_file: str, email: str, password: str) -> None:
 
 
 def _build_search_url(
-    keywords: str, location: str, page_index: int, time_filter: str
+    keywords: str,
+    location: str,
+    page_index: int,
+    time_filter: str,
+    f_WT: str = "",
+    f_JT: str = "",
 ) -> str:
     params = [
         f"keywords={quote(keywords)}",
@@ -225,6 +230,10 @@ def _build_search_url(
     ]
     if time_filter:
         params.append(f"f_TPR={time_filter}")
+    if f_WT:
+        params.append(f"f_WT={f_WT}")
+    if f_JT:
+        params.append(f"f_JT={f_JT}")
     return f"{LINKEDIN_BASE}/jobs/search/?{'&'.join(params)}"
 
 
@@ -245,6 +254,8 @@ class LinkedInScraper:
         max_pages: int = 2,
         time_filter: str = "",
         max_jobs: Optional[int] = None,
+        f_WT: str = "",
+        f_JT: str = "",
     ) -> list[dict]:
         page = self.session.new_page()
         jobs: dict[str, dict] = {}
@@ -252,7 +263,9 @@ class LinkedInScraper:
             for page_index in range(max_pages):
                 if max_jobs and len(jobs) >= max_jobs:
                     break
-                url = _build_search_url(keywords, location, page_index, time_filter)
+                url = _build_search_url(
+                    keywords, location, page_index, time_filter, f_WT=f_WT, f_JT=f_JT
+                )
                 print(f"[scraper] page {page_index + 1}/{max_pages}: {url}")
                 page.goto(url, timeout=60000, wait_until="domcontentloaded")
                 self._wait_for_results(page)
