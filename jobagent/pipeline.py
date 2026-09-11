@@ -161,7 +161,11 @@ class JobAgent:
                 if llm is not None:
                     result = score_job(llm, job, profile)
                 else:
-                    result = keyword_score(job, profile)
+                    result = keyword_score(
+                        job,
+                        profile,
+                        preferred_keywords=rules.get("preferred_keywords") or [],
+                    )
             except LLMError as exc:
                 print(f"[score] failed for {job['id']}: {exc}")
                 continue

@@ -59,57 +59,6 @@ def score_job(llm: LLMClient, job: dict, profile: str) -> dict:
 # Offline fallback (no LLM key required)
 # ----------------------------------------------------------------------
 
-# High-signal domain terms typical of operations/admin/project-management
-# roles. A job posting that hits several of these (plus a matching title)
-# is a good fit; a posting that hits none is not.
-DOMAIN_TERMS = [
-    "operations",
-    "operational",
-    "project management",
-    "project coordinator",
-    "virtual assistant",
-    "executive assistant",
-    "administrative",
-    "admin support",
-    "scheduling",
-    "calendar management",
-    "email management",
-    "follow up",
-    "follow-up",
-    "customer support",
-    "customer service",
-    "client management",
-    "client relationship",
-    "reporting",
-    "data analytics",
-    "coordination",
-    "crm",
-    "onboarding",
-    "documentation",
-    "data entry",
-    "process improvement",
-    "appointment",
-    "inventory",
-    "logistics",
-    "vendor",
-    "inbox management",
-]
-
-# Single domain words that often appear in a matching job *title*.
-TITLE_STEMS = [
-    "operations",
-    "project",
-    "program",
-    "assistant",
-    "coordinator",
-    "administrative",
-    "admin",
-    "support",
-    "management",
-    "operations manager",
-    "ops",
-]
-
 
 def _normalize(value: str) -> str:
     """Lowercase and collapse non-alphanumeric runs to single spaces."""
@@ -162,47 +111,42 @@ def _role_fragments(roles: list[str]) -> list[str]:
     return sorted(fragments)
 
 
-def keyword_score(job: dict, profile: str) -> dict:
-    """Offline 0-100 fit score.
-
-    Title match (0-50): the job title contains a target role phrase from
-    the profile (or a strong role stem). Coverage (0-50): how many
-    high-signal domain terms appear in the posting. A genuine
-    operations/project/VA role with a real description clears 70.
-    """
-    _, roles = profile_keywords(profile)
+def keyword_score(
+    job: dict,
+    profile: str,
+    preferred_keywords: list[str] | None = None,
+) -> dict:
+    skills, roles = profile_keywords(profile)
     title = _normalize(job.get("title") or "")
     fulltext = _normalize(
         " ".join(
             str(job.get(k, "")) for k in ("title", "company", "location", "description")
         )
     )
+    preferred = [
+        _normalize(str(k)) for k in (preferred_keywords or []) if str(k).strip()
+    ]
 
-    # --- Title match (0-50) ---
     title_score = 0
-    reason = ""
+    reason = "no target-role title match"
     fragments = _role_fragments(roles)
     if any(frag in title for frag in fragments):
         title_score = 50
         reason = "title matches a target role"
-    elif any(stem in title for stem in TITLE_STEMS):
-        title_score = 25
-        reason = "title looks related to target roles"
 
-    # --- Domain-term coverage (0-50) ---
-    hits = [term for term in DOMAIN_TERMS if term in fulltext]
-    coverage_steps = [0, 2, 4, 6, 8, 10, 12, 15, 18, 22, 26, 30, 34, 38, 42, 46, 50]
-    coverage = coverage_steps[min(len(hits), len(coverage_steps) - 1)]
-    # Real postings describe duties; give a genuinely matching title a
-    # small floor so short listings are not unfairly skipped.
+    skill_hits = [s for s in skills if _normalize(s) and _normalize(s) in fulltext]
+    preferred_hits = [k for k in preferred if k and k in fulltext]
+    hit_count = len(skill_hits) + len(preferred_hits)
+    coverage_steps = [0, 10, 20, 28, 34, 40, 44, 47, 50]
+    coverage = coverage_steps[min(hit_count, len(coverage_steps) - 1)]
     desc_len = len(_normalize(job.get("description") or ""))
     if title_score == 50 and desc_len > 80:
         coverage = max(coverage, 20)
 
     score = min(100, title_score + coverage)
-    if title_score == 0 and len(hits) < 2:
-        reasons = f"no target-role title match and {len(hits)} domain-term hits"
-    else:
-        matched_skills_text = ", ".join(hits[:6]) if hits else "none"
-        reasons = f"{reason}; domain terms matched ({len(hits)}): {matched_skills_text}"
+    matched = skill_hits[:6] + preferred_hits[:4]
+    reasons = (
+        f"{reason}; skills/preferred matched ({hit_count}): "
+        f"{', '.join(matched) if matched else 'none'}"
+    )
     return {"score": score, "reasons": reasons[:300]}
