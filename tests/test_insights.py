@@ -41,6 +41,18 @@ def test_keep_jobs_with_insights_skips_hidden_applicants():
     assert [j["id"] for j in kept] == ["1"]
 
 
+def test_zero_applicants_is_kept():
+    assert has_required_insights({"posted": "2 hours ago", "applicants": 0}) is True
+    assert has_required_insights({"posted": "2 hours ago", "applicants": "0 applicants"}) is True
+    kept = keep_jobs_with_insights(
+        [
+            {"id": "zero", "posted": "2 hours ago", "applicants": 0},
+            {"id": "hidden", "posted": "2 hours ago", "applicants": None},
+        ]
+    )
+    assert [j["id"] for j in kept] == ["zero"]
+
+
 def test_jobs_needing_detail_includes_missing_insights_with_no_cap():
     jobs = {
         "ok": {"id": "ok", "description": "full", "posted": "2 hours ago", "applicants": 8},
