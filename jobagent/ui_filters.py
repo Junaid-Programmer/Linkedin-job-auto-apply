@@ -72,6 +72,14 @@ def applicant_allowed(count: int | None, max_n: int) -> bool:
     return 0 <= count <= max_n
 
 
+def parse_pages(value) -> int:
+    try:
+        pages = int(value)
+    except (TypeError, ValueError):
+        pages = 2
+    return max(1, min(10, pages))
+
+
 def parse_ui_filters(payload: dict) -> dict:
     keywords = str(payload.get("keywords", "")).strip()
     country = str(payload.get("country", "")).strip()
@@ -90,6 +98,7 @@ def parse_ui_filters(payload: dict) -> dict:
         "max_applicants": max_applicants_from_label(applicants),
         "f_WT": WORK_STYLES.get(work_style, ""),
         "f_JT": JOB_TYPES.get(job_type, ""),
+        "pages": parse_pages(payload.get("pages")),
     }
 
 

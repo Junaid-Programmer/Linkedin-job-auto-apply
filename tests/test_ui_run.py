@@ -69,6 +69,7 @@ def test_execute_ui_run_blocked_does_not_scrape():
 def test_execute_ui_run_scrapes_filters_upserts():
     def scrape_fn(filters):
         assert filters["keywords"] == "virtual assistant"
+        assert filters["pages"] == 4
         return [
             {"id": "1", "title": "Virtual Assistant", "posted": "1 hour ago", "applicants": 2},
             {"id": "2", "title": "Chef", "posted": "1 hour ago", "applicants": 2},
@@ -96,6 +97,7 @@ def test_execute_ui_run_scrapes_filters_upserts():
             "applicants": "",
             "work_style": "Remote",
             "job_type": "Full-time",
+            "pages": 4,
         },
         scrape_fn,
         upsert_fn,

@@ -80,6 +80,7 @@ def test_index_html_has_required_labels():
         "Work style",
         "Applicants",
         "Job type",
+        "Pages",
         "Run",
         "Jobs scraped",
     ):
@@ -105,6 +106,58 @@ def test_start_run_while_running_does_not_spawn_thread(monkeypatch):
     snap = app.start_run({"keywords": "va", "country": "United States"})
     assert snap["run_status"] == "running"
     assert started == []
+
+
+def test_scrape_uses_pages_from_filters():
+    from jobagent.ui_server import UiApp
+
+    seen = {}
+
+    class FakeScraper:
+        def __init__(self, session):
+            pass
+
+        def scrape_search(self, **kwargs):
+            seen.update(kwargs)
+            return []
+
+    class FakeSession:
+        logged_in = True
+
+        def __init__(self, *a, **k):
+            pass
+
+        def start(self):
+            pass
+
+        def close(self):
+            pass
+
+    app = UiApp(state_file="nope")
+    app.search_pages = 2
+    import jobagent.ui_server as ui_server
+
+    orig_session = ui_server.LinkedInSession
+    orig_scraper = ui_server.LinkedInScraper
+    ui_server.LinkedInSession = FakeSession
+    ui_server.LinkedInScraper = FakeScraper
+    try:
+        app._scrape(
+            {
+                "keywords": "va",
+                "country": "United States",
+                "pages": 7,
+                "posted": "all",
+                "f_WT": "2",
+                "f_JT": "F",
+            }
+        )
+    finally:
+        ui_server.LinkedInSession = orig_session
+        ui_server.LinkedInScraper = orig_scraper
+    assert seen["max_pages"] == 7
+    assert seen["keywords"] == "va"
+    assert seen["location"] == "United States"
 
 
 def test_load_spreadsheets_sets_reason_on_failure(monkeypatch):

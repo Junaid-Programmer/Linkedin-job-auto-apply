@@ -182,7 +182,7 @@ class UiApp:
             return scraper.scrape_search(
                 keywords=filters["keywords"],
                 location=filters["country"],
-                max_pages=self.search_pages,
+                max_pages=filters.get("pages") or self.search_pages,
                 time_filter=to_linkedin_tpr(filters.get("posted") or "all"),
                 f_WT=filters.get("f_WT") or "",
                 f_JT=filters.get("f_JT") or "",

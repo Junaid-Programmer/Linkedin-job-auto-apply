@@ -39,11 +39,11 @@ run-ui.bat
 
 On that page:
 
-1. Copy `google_oauth_client.json.example` to `google_oauth_client.json` and fill in the Desktop OAuth client (the project owner may commit the real file).
+1. Copy `google_oauth_client.json.example` to `google_oauth_client.json` and fill in the Desktop OAuth client.
 2. Click **Connect LinkedIn**. Log in by hand; the session is saved to `data/linkedin_state.json`.
 3. Click **Sign in with Google**. Tokens are saved to `data/google_token.json`.
 4. Pick a spreadsheet, then a tab.
-5. Fill title keywords and country, then click **Run**.
+5. Fill title keywords, country, and pages (1–10, default 2), then click **Run**.
 
 This page does **not** click Apply. Jobs are written to the chosen Sheet tab. You apply by hand.
 
